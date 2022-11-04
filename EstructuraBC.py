@@ -1,4 +1,5 @@
-pool = list()
+class globals:
+    pool = list()
 
 class block:
     def __init__(self, id, n, trans, prev, dif, nonce, time) -> None:
@@ -51,7 +52,7 @@ def transfer(origin, key, dest, quant):     #solicitar una transacción
     des.quant += quant
 
     trans = transaction(origin, dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
-    pool.append(trans)
+    globals.pool.append(trans)
 
 
 
