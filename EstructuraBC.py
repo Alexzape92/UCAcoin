@@ -1,7 +1,7 @@
-from hashlib import sha256 #Para hashear las contraseñas
-
 class globals:
-    pool = list()
+    pool = list()   #lista de transacciones
+    newxtid = 0     #id del siguiente bloque a crear
+    lasthash = 0
 
 class block:
     def __init__(self, id, n, trans, prev, dif, nonce, time) -> None:
@@ -20,10 +20,10 @@ class transaction:
         self.cant = cant        #cantidad de criptomonedas transferidas
 
 class user:
-    def __init__(self, id, key, quant) -> None:
+    def __init__(self, id, key, wallet) -> None:
         self.id = id            #id del usuario  
         self.key = key          #clave del usario (hash)
-        self.quant = quant    #cantidad de criptomonedas del usuario
+        self.wallet = wallet    #cantidad de criptomonedas del usuario
     
     def get_obj_us(id) -> user: #Este método accede a la base de datos de los usuarios y devueve el objeto user parseado
         return user()  
@@ -39,10 +39,7 @@ class user:
         return (us.quant >= quant)
 
 def register(id, passwd) -> None:   #Este método registra un usuario en la base de datos con la id pasada
-                                    #y la contraseña (sin cifrar), por lo que antes hay que hashearla
-    hashedPasswd = sha256(passwd.encode("utf-8")).hexdigest()     
-    us = user(id, hashedPasswd, 0)  #Este objeto hay que guardarlo en la base de datos ()
-    return                          
+    return                          #y la contraseña (sin cifrar), por lo que antes hay que hashearla
 
 def transfer(origin, key, dest, quant):     #solicitar una transacción
     if(user.check_user(origin, key) == False):
@@ -58,6 +55,3 @@ def transfer(origin, key, dest, quant):     #solicitar una transacción
 
     trans = transaction(origin, dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
-
-
-
