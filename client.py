@@ -4,7 +4,7 @@ import socket
 def enviar(message):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    server, addr = ('localhost', 10000)
+    server, addr = ('150.214.75.182', 10000)
     print('conectando a ', server)
     sock.connect((server, addr))
 
@@ -25,3 +25,5 @@ def enviar(message):
         sock.close()
 
     return 0
+
+enviar("hola")
