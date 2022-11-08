@@ -5,7 +5,7 @@ def recibir ():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 
-    server_address = ('localhost', 10000)
+    server_address = ('10.182.106.77', 10000)
     print('conectando...')
     sock.bind(server_address)
 
