@@ -1,6 +1,8 @@
-from hashlib import sha256 #para cifrar las contraseñas de usuarios
+from hashlib import sha256 #Para cifrar las contraseñas de usuarios
 import miner
-from datetime import date
+from datetime import date  #Para el timestamp de los bloques
+import os                  #Para acceder al json
+import json                #.....
 
 class globals:
     pool = list()   #lista de transacciones
@@ -44,11 +46,17 @@ class user:
 
         return (us.quant >= quant)
 
+
+def hash(string):   #devuelve el hash (usando sha256) de la string
+    return sha256(string.encode('utf-8').hexdigest())
+
+
 def register(id, passwd) -> None:   #Este método registra un usuario en la base de datos con la id pasada
                                     #y la contraseña (sin cifrar), por lo que antes hay que hashearla
     hashed_passwd = sha256(passwd.encode('utf-8').hexdigest())
     u = user(id, hashed_passwd, 0)  #este usuario hay que guardarlo en la base de datos
     return                          
+
 
 def transfer(origin, key, dest, quant):     #solicitar una transacción
     if(user.check_user(origin, key) == False):
@@ -65,43 +73,50 @@ def transfer(origin, key, dest, quant):     #solicitar una transacción
     trans = transaction(dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
 
-def hashTransaction(trans):             #Hashea la transaccion a traves de el usuario destino y la cantidad
-    trans_str str(trans.userd) + "-" + str(trans.quant)
-    return sha256(trans_str.encode('utf-8').hexdigest())
+
+def hashTransaction(trans):     #Hashea la transaccion a traves de el usuario destino y la cantidad
+    trans_str = str(trans.userd) + "-" + str(trans.quant)
+    return hash(trans_str)
 
 
-def rootHash(transList):                     #Recibe una lista de transacciones y devuelve el hash raiz
+def rootHash(transList):    #Recibe una lista de transacciones y devuelve el hash raiz
     root_str = ""
     for t in transList:
-            root_str += t.hash
-    return sha256(root_str.encode('utf-8').hexdigest())
+            root_str += str(t.hash)
+    return hash(root_str)
 
 
-def hashBlock(block):                   #Hashea el bloque a traves de los hashes de sus transacciones, 
-                                        #el timestamp, y el hash del bloque anterior
-    block_str = str(block.rootHash) + "-" + str(block.time) + "-" str(block.prev)       
+def hashBlock(block):       #Hashea el bloque a traves de los hashes de sus transacciones, 
+                            #el timestamp, y el hash del bloque anterior
+    block_str = str(block.rootHash) + "-" + str(block.time) + "-" + str(block.prev)    
+    return hash(block_str)
 
 
 def createBlock():      #crea un nuevo bloque y lo guarda en el fichero con la blockchain
-    with open('blockchain.json', 'r') as json_file:     #Cargamos el json con la blockchain
-    if (os.path.getsize("blockchain.json") == 0): 
-        blockchain = {block[]}  #Si el archivo esta vacio
-    else: blockchain = json.load(json_file)
+
+    #Cargamos el json con la blockchain
+    with open('blockchain.json', 'r') as json_file:
+        if (os.path.getsize("blockchain.json") == 0):   #Si el archivo esta vacio
+            blockchain = {'block':[]}                   #creamos su estructura
+        else: blockchain = json.load(json_file)
     json_file.close()
 
     fechaHora = date.today()
-    fechaHora_fixed = fecha.strftime("%d/%m/%Y %H:%M:%S") #fecha y hora en formato dd/mm/YY H:M:S
+    fechaHora_fixed = fechaHora.strftime("%d/%m/%Y %H:%M:%S") #fecha y hora en formato dd/mm/YY H:M:S
 
-    #faltan los parametros de dificultad y nonce
-    newBlock = block(globals.nextid, globals.pool.len(), globals.pool, globals.lasthash, dificul, miner.searchNonce(), fecha_fixed)
-    nesblock.roothash = rootHash(globals.pool)
-    newblock.hash = hashBlock(newBlock)
+    #FALTAN LOS PARAMETROS DE DIFICULTAD Y NONCE
+    newBlock = block(globals.nextid, globals.pool.len(), globals.pool, globals.lasthash, dificul 
+                    , miner.searchNonce(), fechaHora_fixed)
+    newBlock.roothash = rootHash(globals.pool)
+    newBlock.hash = hashBlock(newBlock)
 
-    blockchain['block']append(block.__dict__)
+    #Actualizamos el fichero json
+    blockchain['block'].append(newBlock.__dict__)
     json_file =  open('blockchain.json', 'w', encoding="utf-8")
-    json.dump(blockchain, json_file, indent = 6, ensure_ascii=False)  #Actualizamos el fichero json
+    json.dump(blockchain, json_file, indent = 6, ensure_ascii=False)  
     json_file.close()
 
-    globals.pool = []   #vaciamos la lista de transacciones
+    #Actualizamos globals 
+    globals.pool = []
     globals.nextid += 1
     globals.lasthash = newBlock.hash
