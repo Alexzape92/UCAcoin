@@ -1,15 +1,15 @@
 import socket
+
+
 # import sys
 
-def recibir ():
+def recibir():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-
-    server_address = ('10.182.106.77', 10000)
+    server_address = ('192.168.1.39', 5050)
     print('conectando...')
     sock.bind(server_address)
 
-    
     sock.listen()
 
     while True:
@@ -31,5 +31,6 @@ def recibir ():
 
         finally:
             connection.close()
-        break
+        #break
     return 0
+recibir()
