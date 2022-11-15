@@ -16,7 +16,7 @@ class block:
         self.time = time        #fecha y hora en la que se creó el bloque
     
     def __str__(self) -> str:
-        return 'id = {}, trans = {}, prev = {}, dif = {}, nonce = {}'.format(self.id, self.trans, self.prev, self.dif, self.nonce)
+        return 'id = {}, trans = {}, prev = {}, dif = {}, nonce = {}, tiempo = {}'.format(self.id, self.trans, self.prev, self.dif, self.nonce, self.time)
 
 class transaction:
     def __init__(self, usero, userd, cant) -> None:
@@ -61,7 +61,7 @@ def transfer(origin, key, dest, quant):     #solicitar una transacción
     trans = transaction(origin, dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
 
-    nonce = requests.get(url='http://localhost:8000/getnonce/99999999').text
+    nonce = requests.get(url='http://localhost:8000/getnonce/256').text
 
     print(nonce) 
 
