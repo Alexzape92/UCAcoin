@@ -8,16 +8,15 @@ class globals:
     pool = list()   #lista de transacciones
     nextid = 0      #id del siguiente bloque a crear
     lasthash = 0    #hash del bloque anterior
+    maxPoolSize = 100 #numero maximo de transacciones por bloque (he puesto 100 por poner)
+    currentBlock = createBlock() #HAY QUE HACER QUE ESTA INICIALIZACION SE HAGA SOLO SI EL JSON ESTA VACIO
 
 class block:
-    def __init__(self, id, n, trans, prev, dif, nonce, time) -> None:
-        self.id = id            #id del bloque (profundidad del bloque)
-        self.n = n              #número de transacciones en este bloque
-        self.trans = trans      #lista de transacciones
+    def __init__(self, prev, nonce, time) -> None:
         self.prev = prev        #hash del bloque anterior
         self.hash               #hash del bloque
-        self.roothash           #hash raiz
-        self.dif = dif          #dificultad para el nonce del siguiente bloque
+        self.roothash           #hash raiz (el de las transacciones)
+        #self.dif = dif          #dificultad para el nonce del siguiente bloque
         self.nonce = nonce      #nonce del bloque
         self.time = time        #fecha y hora en la que se creó el bloque
 
@@ -47,18 +46,44 @@ class user:
         return (us.quant >= quant)
 
 
-def hash(string):   #devuelve el hash (usando sha256) de la string
+
+#devuelve el hash (usando sha256) del string
+def hash(string):   
     return sha256(string.encode('utf-8').hexdigest())
 
 
-def register(id, passwd) -> None:   #Este método registra un usuario en la base de datos con la id pasada
-                                    #y la contraseña (sin cifrar), por lo que antes hay que hashearla
+#Hashea la transaccion a traves de el usuario destino y la cantidad
+def hashTransaction(trans):     
+    trans_str = str(trans.userd) + "-" + str(trans.quant)
+    return hash(trans_str)
+
+
+#Recibe una lista de transacciones y devuelve el hash raiz
+def rootHash(transList):    
+    root_str = ""
+    for trans in transList:
+            root_str += str(trans.hash)
+    return hash(root_str)
+
+
+#Hashea el bloque a traves de los hashes de sus transacciones, 
+# el timestamp, y el hash del bloque anterior
+def hashBlock(block):       
+    block_str = str(block.rootHash) + "-" + str(block.time) + "-" + str(block.prev)    
+    return hash(block_str)
+
+
+
+#Este método registra un usuario en la base de datos con la id pasada
+# #y la contraseña (sin cifrar), por lo que antes hay que hashearla
+def register(id, passwd) -> None:   
     hashed_passwd = sha256(passwd.encode('utf-8').hexdigest())
     u = user(id, hashed_passwd, 0)  #este usuario hay que guardarlo en la base de datos
     return                          
 
 
-def transfer(origin, key, dest, quant):     #solicitar una transacción
+#Solicitar una transacción
+def transfer(origin, key, dest, quant):     
     if(user.check_user(origin, key) == False):
         raise Exception('CLAVE')
     if(user.check_quant(origin, quant) == False):
@@ -67,56 +92,57 @@ def transfer(origin, key, dest, quant):     #solicitar una transacción
     ori = user.get_obj_us(origin)
     des = user.get_obj_us(dest)
 
-    ori.quant -= quant  #Transacción validadas, cambiamos las carteras de los usuarios
+    ori.quant -= quant
     des.quant += quant
 
     trans = transaction(dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
+    updateBlock(globals.currentBlock)
 
 
-def hashTransaction(trans):     #Hashea la transaccion a traves de el usuario destino y la cantidad
-    trans_str = str(trans.userd) + "-" + str(trans.quant)
-    return hash(trans_str)
-
-
-def rootHash(transList):    #Recibe una lista de transacciones y devuelve el hash raiz
-    root_str = ""
-    for t in transList:
-            root_str += str(t.hash)
-    return hash(root_str)
-
-
-def hashBlock(block):       #Hashea el bloque a traves de los hashes de sus transacciones, 
-                            #el timestamp, y el hash del bloque anterior
-    block_str = str(block.rootHash) + "-" + str(block.time) + "-" + str(block.prev)    
-    return hash(block_str)
-
-
-def createBlock():      #crea un nuevo bloque y lo guarda en el fichero con la blockchain
-
-    #Cargamos el json con la blockchain
-    with open('blockchain.json', 'r') as json_file:
+def updateJson(block, isNew):
+    with open('blockchain.json', 'r+') as json_file:
         if (os.path.getsize("blockchain.json") == 0):   #Si el archivo esta vacio
             blockchain = {'block':[]}                   #creamos su estructura
         else: blockchain = json.load(json_file)
-    json_file.close()
+        json_file.seek(0)                               #Para poder reescribir el json, sin esto
+        json_file.truncate(0)                           #solo podriamos añadir datos, no modificar
+        if(isNew):
+            #Añadimos el bloque
+            blockchain['block'].append(block.__dict__) 
+        else:
+            #Actualizamos el ultimo bloque del json
+            blockchain['block'][len(blockchain['block']-1)] = block.__dict__ 
 
+        json.dump(blockchain, json_file, indent = 6, ensure_ascii=False)  
+        json_file.close()
+
+
+#Actualiza el hash del bloque actual y crea uno nuevo si es necesario
+def updateBlock(block):  
+    block.roothash = rootHash(globals.pool)
+    block.hash = hashBlock(block)
+    updateJson(block, False)
+    if(len(globals.pool) == globals.maxPoolSize):
+        createBlock()
+
+
+#Crea un nuevo bloque y lo guarda en el fichero con la blockchain
+def createBlock():      
     fechaHora = date.today()
-    fechaHora_fixed = fechaHora.strftime("%d/%m/%Y %H:%M:%S") #fecha y hora en formato dd/mm/YY H:M:S
+    fechaHora_fixed = fechaHora.strftime("%d/%m/%Y %H:%M:%S")
 
-    #FALTAN LOS PARAMETROS DE DIFICULTAD Y NONCE
-    newBlock = block(globals.nextid, globals.pool.len(), globals.pool, globals.lasthash, dificul 
-                    , miner.searchNonce(), fechaHora_fixed)
-    newBlock.roothash = rootHash(globals.pool)
+    #FALTA PARAMETRO DE DIFICULTAD PARA SEARCHNONCE
+    newBlock = block(globals.lasthash, miner.searchNonce(), fechaHora_fixed)
+    newBlock.roothash = hash("null")                        #el bloque en este punto no tiene transacciones
     newBlock.hash = hashBlock(newBlock)
 
-    #Actualizamos el fichero json
-    blockchain['block'].append(newBlock.__dict__)
-    json_file =  open('blockchain.json', 'w', encoding="utf-8")
-    json.dump(blockchain, json_file, indent = 6, ensure_ascii=False)  
-    json_file.close()
+    updateJson(newBlock, True)
 
-    #Actualizamos globals 
+    #FALTA MANDAR A ACTUALIZAR LOS JSON DE TODA LA RED DE NODOS
+
     globals.pool = []
     globals.nextid += 1
     globals.lasthash = newBlock.hash
+
+    return newBlock
