@@ -1,15 +1,18 @@
 from hashlib import sha256 #Para cifrar las contraseñas de usuarios
 import miner
-from datetime import date  #Para el timestamp de los bloques
-import os                  #Para acceder al json
-import json                #.....
+from datetime import date  #Para el timestamp de los bloques 
+import json                #Para acceder al json
+import os                  #....
+
+#MUCHOS METODOS PRESUPONEN QUE EL CONTENIDO DEL JSON ES CORRECTO, POR LO QUE
+#ANTES DE LLAMAR A ALGUNO DE ESTOS SE TIENE QUE HABER LLAMADO A verifyJson()
+
 
 class globals:
-    pool = list()   #lista de transacciones
-    nextid = 0      #id del siguiente bloque a crear
-    lasthash = 0    #hash del bloque anterior
-    maxPoolSize = 100 #numero maximo de transacciones por bloque (he puesto 100 por poner)
-    currentBlock = createBlock() #HAY QUE HACER QUE ESTA INICIALIZACION SE HAGA SOLO SI EL JSON ESTA VACIO
+    pool = list()                   #lista de transacciones
+    lasthash = 0                    #hash del bloque anterior
+    maxPoolSize = 100               #numero maximo de transacciones por bloque (he puesto 100 por poner)
+    currentBlock = getLastBlock()   #bloque al que van las transacciones actualmente
 
 class block:
     def __init__(self, prev, nonce, time) -> None:
@@ -77,9 +80,7 @@ def hashBlock(block):
 #Este método registra un usuario en la base de datos con la id pasada
 # #y la contraseña (sin cifrar), por lo que antes hay que hashearla
 def register(id, passwd) -> None:   
-    hashed_passwd = sha256(passwd.encode('utf-8').hexdigest())
-    u = user(id, hashed_passwd, 0)  #este usuario hay que guardarlo en la base de datos
-    return                          
+    u = user(id, hash(passwd), 0)  #ESTE USUARIO HAY QUE GUARDARLO EN LA BASE DE DATOS                 
 
 
 #Solicitar una transacción
@@ -100,11 +101,12 @@ def transfer(origin, key, dest, quant):
     updateBlock(globals.currentBlock)
 
 
+#Actualiza el contenido del json local
+#isNew = True: el bloque es nuevo, se añade
+#isNew = False: el bloque no es nuevo, se modifica
 def updateJson(block, isNew):
     with open('blockchain.json', 'r+') as json_file:
-        if (os.path.getsize("blockchain.json") == 0):   #Si el archivo esta vacio
-            blockchain = {'block':[]}                   #creamos su estructura
-        else: blockchain = json.load(json_file)
+        blockchain = json.load(json_file)
         json_file.seek(0)                               #Para poder reescribir el json, sin esto
         json_file.truncate(0)                           #solo podriamos añadir datos, no modificar
         if(isNew):
@@ -112,7 +114,7 @@ def updateJson(block, isNew):
             blockchain['block'].append(block.__dict__) 
         else:
             #Actualizamos el ultimo bloque del json
-            blockchain['block'][len(blockchain['block']-1)] = block.__dict__ 
+            blockchain['block'][lastBlock(blockchain)] = block.__dict__ 
 
         json.dump(blockchain, json_file, indent = 6, ensure_ascii=False)  
         json_file.close()
@@ -127,14 +129,14 @@ def updateBlock(block):
         createBlock()
 
 
-#Crea un nuevo bloque y lo guarda en el fichero con la blockchain
+#Devuelve un nuevo bloque y lo guarda en el fichero con la blockchain
 def createBlock():      
     fechaHora = date.today()
-    fechaHora_fixed = fechaHora.strftime("%d/%m/%Y %H:%M:%S")
+    timestamp = fechaHora.strftime("%d/%m/%Y %H:%M:%S")
 
     #FALTA PARAMETRO DE DIFICULTAD PARA SEARCHNONCE
-    newBlock = block(globals.lasthash, miner.searchNonce(), fechaHora_fixed)
-    newBlock.roothash = hash("null")                        #el bloque en este punto no tiene transacciones
+    newBlock = block(globals.lasthash, miner.searchNonce(), timestamp)
+    newBlock.roothash = hash("null")        #el bloque en este punto no tiene transacciones
     newBlock.hash = hashBlock(newBlock)
 
     updateJson(newBlock, True)
@@ -142,7 +144,54 @@ def createBlock():
     #FALTA MANDAR A ACTUALIZAR LOS JSON DE TODA LA RED DE NODOS
 
     globals.pool = []
-    globals.nextid += 1
     globals.lasthash = newBlock.hash
 
     return newBlock
+
+
+#Devuelve el indice ultimo bloque del diccionario con formato blockchain
+def lastBlock(blockchain):
+    return len(blockchain['block'])-1
+
+
+#Devuelve el ultimo bloque de la blockchain
+#Si no hay ningun bloque, crea el primero
+def getLastBlock():
+    with open('blockchain.json', 'r') as json_file:
+        blockchain = json.load(json_file)
+        json_file.close()
+        if(len(blockchain['block']) == 0):
+            return createBlock()
+        else:
+            return blockchain['block'][lastBlock(blockchain)]
+
+
+#Devuelve True si el contenido del json es correcto
+#Por ahora no tiene en cuenta a otros nodos, solo que el propio
+#json tenga sentido y los hashes sean correctos
+def verifyJson():
+    isCorrect = True
+    try:
+        with open('blockchain.json', 'r+') as json_file:
+            #Si el json esta vacio, lo inicializa con la estructura correcta
+            if(os.path.getsize('blockchain.json') == 0): 
+                blockchain = {'block':[]}
+                json_file.seek(0)
+                json_file.truncate(0)
+                json.dump(blockchain, json_file, indent = 6, ensure_ascii=False)  
+                json_file.close()
+                return True
+            else:
+                blockchain = json.load(json_file)
+                json_file.close()
+                #Comprobamos que la cadena no esta rota
+                prevHash = 0
+                for block in blockchain['block']:
+                    blockHash = hash(block)
+                    isCorrect = (block.hash == blockHash and block.prev == prevHash)
+                    prevHash = blockHash
+                    if(not isCorrect): break
+    except:
+        isCorrect = False
+        json_file.close()
+    return isCorrect
