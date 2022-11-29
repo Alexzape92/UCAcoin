@@ -61,7 +61,7 @@ def transfer(origin, key, dest, quant):     #solicitar una transacción
     trans = transaction(origin, dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
 
-    nonce = requests.get(url='http://localhost:8000/getnonce/256').text
+    nonce = requests.get(url='http://localhost:8000/getnonce/25600').text #Nonce: string
 
     print(nonce) 
 

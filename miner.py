@@ -20,7 +20,6 @@ def searchNonce(diff) -> int:   #Esto recibe el hash del bloque y buscará el no
 
         if int(hashlib.sha256(str(tempBlock).encode('utf-8')).hexdigest(), 16) % pow(10, 12) < int(diff):
             encontrado = True
-            print("uwu")
             return str(nonce)
         
         nonce = nonce + 1
