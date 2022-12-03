@@ -1,4 +1,7 @@
+from __future__ import annotations
 import requests
+import time
+import sqlite3
 
 class globals:
     pool = list()   #lista de transacciones
@@ -28,42 +31,61 @@ class user:
     def __init__(self, id, key, wallet) -> None:
         self.id = id            #id del usuario  
         self.key = key          #clave del usario (hash)
-        self.wallet = wallet    #cantidad de criptomonedas del usuario
+        self.quant = wallet    #cantidad de criptomonedas del usuario
     
-    #def get_obj_us(id) -> user: #Este método accede a la base de datos de los usuarios y devueve el objeto user parseado
-    #    return user()  
+    def __str__(self) -> str:
+        return "{}, {}, {}".format(self.id, self.key, self.quant)
     
+    def get_obj_us(id) -> user: #Este método accede a la base de datos de los usuarios y devueve el objeto user parseado
+        db = sqlite3.connect('ucacoin.db')
+        cur = db.cursor()
+
+        cursor = cur.execute("SELECT * FROM Users WHERE id = '{}'".format(id))
+        result = cursor.fetchall()
+
+        for row in result:
+            db.close()
+            return user(row[0], row[1], row[2])
+    
+    #Comprueba que el usuario tenga la contraseña especificada (Habrá que hashearla en futuras versiones)
     def check_user(id, key) -> bool:
         us = user.get_obj_us(id)     
     
         return (us.key == key)
     
+    #Comprueba que el usuario que realiza una transacción tenga suficientes UCACoins
     def check_quant(id, quant) -> bool:
         us = user.get_obj_us(id)
 
         return (us.quant >= quant)
+    
+    #Actualiza las carteras de los usuarios
+    def act_quant(id1, id2, q) -> None:
+        db = sqlite3.connect('ucacoin.db')
+
+        db.execute("UPDATE Users SET wallet = wallet - {} WHERE id = '{}'".format(q, id1))
+        db.execute("UPDATE Users SET wallet = wallet + {} WHERE id = '{}'".format(q, id2))
+
+        db.commit()
+        db.close()
+
 
 def register(id, passwd) -> None:   #Este método registra un usuario en la base de datos con la id pasada
     return                          #y la contraseña (sin cifrar), por lo que antes hay que hashearla
 
 def transfer(origin, key, dest, quant):     #solicitar una transacción
-    #if(user.check_user(origin, key) == False):
-    #    raise Exception('CLAVE')
-    #if(user.check_quant(origin, quant) == False):
-    #    raise Exception('CANTIDAD')
-    #A partir de aquí la transacción está validada, podemos sacar los objetos
-    #ori = user.get_obj_us(origin)
-    #des = user.get_obj_us(dest)
+    #COMPROBAR QUE LA TRANSACCIÓN ES VALIDA
+    if(user.check_user(origin, key) == False):
+        raise Exception('CLAVE')
+    if(user.check_quant(origin, quant) == False):
+        raise Exception('CANTIDAD')
 
-    #ori.quant -= quant  #Transacción validadas, cambiamos las carteras de los usuarios
-    #des.quant += quant
+    #A partir de aquí la transacción está validada, actualicemos los usuarios
+    user.act_quant(origin, dest, quant)
 
     trans = transaction(origin, dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
 
-    nonce = requests.get(url='http://localhost:8000/getnonce/25600').text #Nonce: string
-
-    print(nonce) 
 
 if __name__ == '__main__':
-    transfer(0, 'hola', 1, 10)
+    transfer('Richarte2002', 'ElBarrio', 'AlexZape', 7.5)
