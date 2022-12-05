@@ -2,6 +2,7 @@ from __future__ import annotations
 import requests
 import time
 import sqlite3
+from bottle import get, run
 
 class globals:
     pool = list()   #lista de transacciones
@@ -26,6 +27,9 @@ class transaction:
         self.usero = usero      #id del usuario que realiza la transacción
         self.userd = userd      #id del usuario que recibe la transacción
         self.cant = cant        #cantidad de criptomonedas transferidas
+    
+    def __str__(self) -> str:
+        return "sender: {}, receiver: {}, amount: {}".format(self.usero, self.userd, self.cant)
 
 class user:
     def __init__(self, id, key, wallet) -> None:
@@ -86,6 +90,14 @@ def transfer(origin, key, dest, quant):     #solicitar una transacción
     trans = transaction(origin, dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
 
+@get('/getTrans')
+def transactions():
+    res_str = ""
+    for trans in globals.pool:
+        res_str = res_str + str(trans) + "; "
+    
+    return res_str
 
 if __name__ == '__main__':
-    transfer('Richarte2002', 'ElBarrio', 'AlexZape', 7.5)
+    globals.pool.append(transaction('AlexZape', 'Richarte2002', 1.5))
+    run(host='localhost', port=8080)
