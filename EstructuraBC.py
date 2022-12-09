@@ -1,6 +1,7 @@
 from __future__ import annotations
 import requests
 import time
+import json
 import sqlite3
 from bottle import get, run
 
@@ -8,19 +9,6 @@ class globals:
     pool = list()   #lista de transacciones
     newxtid = 0     #id del siguiente bloque a crear
     lasthash = 0
-
-class block:
-    def __init__(self, id, n, trans, prev, dif, nonce, time) -> None:
-        self.id = id            #id del bloque (profundidad del bloque)
-        self.n = n              #número de transacciones en este bloque
-        self.trans = trans      #lista de transacciones
-        self.prev = prev        #hash del bloque anterior
-        self.dif = dif          #dificultad para el nonce del siguiente bloque
-        self.nonce = nonce      #nonce del bloque
-        self.time = time        #fecha y hora en la que se creó el bloque
-    
-    def __str__(self) -> str:
-        return 'id = {}, trans = {}, prev = {}, dif = {}, nonce = {}, tiempo = {}'.format(self.id, self.trans, self.prev, self.dif, self.nonce, self.time)
 
 class transaction:
     def __init__(self, usero, userd, cant) -> None:
@@ -92,12 +80,18 @@ def transfer(origin, key, dest, quant):     #solicitar una transacción
 
 @get('/getTrans')
 def transactions():
-    res_str = ""
+    list_act = list()
+
     for trans in globals.pool:
-        res_str = res_str + str(trans) + "; "
+        tempdict = {"usero": trans.usero, "userd": trans.userd, "cant": trans.cant}
+        list_act.append(tempdict)
     
-    return res_str
+    json_act = json.dumps({"nextid":globals.newxtid, "lasthash": globals.lasthash, "transactions": list_act})
+
+    return json_act
+
 
 if __name__ == '__main__':
     globals.pool.append(transaction('AlexZape', 'Richarte2002', 1.5))
-    run(host='localhost', port=8080)
+    globals.pool.append(transaction('AlexZape', 'Richarte2002', 1.5))
+    run(host='localhost', port=8081)
