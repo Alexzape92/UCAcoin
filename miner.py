@@ -17,8 +17,8 @@ class block:
     def __str__(self) -> str:
         return 'id = {}, n = {}, trans = {}, prev = {}, dif = {}, nonce = {}, tiempo = {}'.format(self.id, self.n, self.trans, self.prev, self.dif, self.nonce, self.time)
 
-@get('/getnonce/<diff>')
-def searchNonce(diff) -> int:   #Esto recibe el hash del bloque y buscará el nonce
+@get('/getNonce/<diff>')
+def searchNonce(diff):   #Esto recibe el hash del bloque y buscará el nonce
     datajson = requests.get(url='http://localhost:8081/getTrans').text  #pool es la lista en formato Json
 
     datajson = json.loads(datajson)
@@ -29,12 +29,11 @@ def searchNonce(diff) -> int:   #Esto recibe el hash del bloque y buscará el no
     encontrado = False
     nonce = 0
     while not encontrado:
-
-        print("posible nonce: " + str(nonce))
         tempBlock = block(nextid, len(pool), pool, lasthash, int(diff), nonce, time.time())  #El bloque que estamos intentando generar
 
         if int(hashlib.sha256(str(tempBlock).encode('utf-8')).hexdigest(), 16) % pow(10, 12) < int(diff):
             encontrado = True
+            print(nonce)
             return str(nonce) 
         nonce = nonce + 1
 

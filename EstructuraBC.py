@@ -3,7 +3,7 @@ import requests
 import time
 import json
 import sqlite3
-from bottle import get, run
+from bottle import get, run, post, request
 
 class globals:
     pool = list()   #lista de transacciones
@@ -65,7 +65,15 @@ class user:
 def register(id, passwd) -> None:   #Este método registra un usuario en la base de datos con la id pasada
     return                          #y la contraseña (sin cifrar), por lo que antes hay que hashearla
 
-def transfer(origin, key, dest, quant):     #solicitar una transacción
+@post('/Transfer')
+def transfer():     #solicitar una transacción
+    datajson = request.json
+
+    origin = datajson['origin']
+    key = datajson['key']
+    dest = datajson['dest']
+    quant = datajson['quant']
+
     #COMPROBAR QUE LA TRANSACCIÓN ES VALIDA
     if(user.check_user(origin, key) == False):
         raise Exception('CLAVE')
@@ -90,8 +98,5 @@ def transactions():
 
     return json_act
 
-
 if __name__ == '__main__':
-    globals.pool.append(transaction('AlexZape', 'Richarte2002', 1.5))
-    globals.pool.append(transaction('AlexZape', 'Richarte2002', 1.5))
     run(host='localhost', port=8081)
