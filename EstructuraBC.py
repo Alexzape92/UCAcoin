@@ -1,5 +1,4 @@
 from __future__ import annotations
-import requests
 import time
 import json
 import sqlite3
@@ -11,10 +10,11 @@ class globals:
     lasthash = 0
 
 class transaction:
-    def __init__(self, usero, userd, cant) -> None:
+    def __init__(self, usero, userd, cant, date) -> None:
         self.usero = usero      #id del usuario que realiza la transacción
         self.userd = userd      #id del usuario que recibe la transacción
         self.cant = cant        #cantidad de criptomonedas transferidas
+        self.date = date
     
     def __str__(self) -> str:
         return "sender: {}, receiver: {}, amount: {}".format(self.usero, self.userd, self.cant)
@@ -73,6 +73,7 @@ def transfer():     #solicitar una transacción
     key = datajson['key']
     dest = datajson['dest']
     quant = datajson['quant']
+    date = int(time.time())
 
     #COMPROBAR QUE LA TRANSACCIÓN ES VALIDA
     if(user.check_user(origin, key) == False):
@@ -83,7 +84,7 @@ def transfer():     #solicitar una transacción
     #A partir de aquí la transacción está validada, actualicemos los usuarios
     user.act_quant(origin, dest, quant)
 
-    trans = transaction(origin, dest, quant)    #Creamos el objeto transacción y lo guardamos en el pool
+    trans = transaction(origin, dest, quant, date)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
 
 @get('/getTrans')
@@ -91,12 +92,26 @@ def transactions():
     list_act = list()
 
     for trans in globals.pool:
-        tempdict = {"usero": trans.usero, "userd": trans.userd, "cant": trans.cant}
+        tempdict = {"usero": trans.usero, "userd": trans.userd, "cant": trans.cant, "date": trans.date}
         list_act.append(tempdict)
     
     json_act = json.dumps({"nextid":globals.newxtid, "lasthash": globals.lasthash, "transactions": list_act})
 
     return json_act
+
+@post('/actGlobals')
+def act():
+    datajson = request.json
+
+    myhash = datajson['hash']
+    n = datajson['n']
+    globals.newxtid = globals.newxtid + 1
+    globals.lasthash = myhash
+
+    i = 0
+    while i < n:
+        globals.pool.pop(0)
+        i = i+1
 
 if __name__ == '__main__':
     run(host='localhost', port=8081)

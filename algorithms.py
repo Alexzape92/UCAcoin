@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import sqlite3
+import hashlib
 
 class block:
     def __init__(self, id, n, trans, prev, dif, nonce, time) -> None:
@@ -16,11 +17,22 @@ class block:
     def __str__(self) -> str:
         return 'id = {}, n = {}, trans = {}, prev = {}, dif = {}, nonce = {}, tiempo = {}'.format(self.id, self.n, self.trans, self.prev, self.dif, self.nonce, self.time)
 
+class transaction:
+    def __init__(self, usero, userd, cant, date) -> None:
+        self.usero = usero      #id del usuario que realiza la transacción
+        self.userd = userd      #id del usuario que recibe la transacción
+        self.cant = cant        #cantidad de criptomonedas transferidas
+        self.date = date
+    
+    def __str__(self) -> str:
+        return "sender: {}, receiver: {}, amount: {}".format(self.usero, self.userd, self.cant)
+
 def upd_db(nextid, lasthash, block) -> None:
     db = sqlite3.connect('ucacoin.db')
 
     db.execute("INSERT INTO blockchain VALUES({}, {}, '{}', '{}', {}, {})".format(nextid, block.n, lasthash, block.dif, block.nonce, block.time))
-    #Falta insertar también las transacciones en su tabla correspondiente
+    for trans in block.trans:
+        db.execute("INSERT INTO Transactions VALUES(NULL, {}, '{}', '{}', {}, {})".format(block.id, trans['usero'], trans['userd'], trans['cant'], trans['date']))
 
     db.commit()
     db.close()
@@ -36,6 +48,11 @@ def createBlock() -> None:
 
         nonce = requests.get(url='http://localhost:8000/getNonce/500000').text
         currentBlock = block(nextid, len(pool), pool, lasthash, 20000, int(nonce), int(time.time()))
+
+        upd_db(nextid, lasthash, currentBlock)
+
+        myjson = {"hash": str(hashlib.sha256(str(currentBlock).encode('utf-8'))), "n": len(pool)}
+        requests.post(url='http://localhost:8081/actGlobals', json=myjson)
 
 
 createBlock()
