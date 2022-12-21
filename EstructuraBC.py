@@ -6,7 +6,7 @@ from bottle import get, run, post, request
 
 class globals:
     pool = list()   #lista de transacciones
-    newxtid = 0     #id del siguiente bloque a crear
+    newxtid = -1     #id del siguiente bloque a crear
     lasthash = 0
 
 class transaction:
@@ -32,7 +32,7 @@ class user:
         db = sqlite3.connect('ucacoin.db')
         cur = db.cursor()
 
-        cursor = cur.execute("SELECT * FROM Users WHERE id = '{}'".format(id))
+        cursor = cur.execute("SELECT * FROM Wallets WHERE Id = '{}'".format(id))
         result = cursor.fetchall()
 
         for row in result:
@@ -55,8 +55,8 @@ class user:
     def act_quant(id1, id2, q) -> None:
         db = sqlite3.connect('ucacoin.db')
 
-        db.execute("UPDATE Users SET wallet = wallet - {} WHERE id = '{}'".format(q, id1))
-        db.execute("UPDATE Users SET wallet = wallet + {} WHERE id = '{}'".format(q, id2))
+        db.execute("UPDATE Wallets SET Amount = Amount - {} WHERE Id = '{}'".format(q, id1))
+        db.execute("UPDATE Wallets SET Amount = Amount + {} WHERE Id = '{}'".format(q, id2))
 
         db.commit()
         db.close()
@@ -94,6 +94,23 @@ def transactions():
     for trans in globals.pool:
         tempdict = {"usero": trans.usero, "userd": trans.userd, "cant": trans.cant, "date": trans.date}
         list_act.append(tempdict)
+    
+    if globals.newxtid == -1:
+        db = sqlite3.connect('ucacoin.db')
+        cur = db.cursor()
+
+        cur = cur.execute("SELECT * FROM blockchain")
+        result = cur.fetchall()
+
+        #Guardamos en el campo nextid la última id que se ha encontrado en la BD (si está vacía sigue siendo -1)
+        for row in result:
+            globals.newxtid = row[0]
+
+        
+        db.close()
+        
+        #Le sumamos una para que no se repita
+        globals.newxtid = globals.newxtid + 1
     
     json_act = json.dumps({"nextid":globals.newxtid, "lasthash": globals.lasthash, "transactions": list_act})
 

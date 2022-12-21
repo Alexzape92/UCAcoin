@@ -45,13 +45,14 @@ def createBlock() -> None:
         nextid = datajson['nextid']
         lasthash = datajson["lasthash"]
         pool = datajson["transactions"]
+        diff = 500000
 
-        nonce = requests.get(url='http://localhost:8000/getNonce/500000').text
-        currentBlock = block(nextid, len(pool), pool, lasthash, 20000, int(nonce), int(time.time()))
+        nonce = requests.get(url='http://localhost:8000/getNonce/{}'.format(diff)).text
+        currentBlock = block(nextid, len(pool), pool, lasthash, diff, int(nonce), int(time.time()))
 
         upd_db(nextid, lasthash, currentBlock)
 
-        myjson = {"hash": str(hashlib.sha256(str(currentBlock).encode('utf-8'))), "n": len(pool)}
+        myjson = {"hash": hashlib.sha256(str(currentBlock).encode('utf-8')).hexdigest(), "n": len(pool)}
         requests.post(url='http://localhost:8081/actGlobals', json=myjson)
 
 
