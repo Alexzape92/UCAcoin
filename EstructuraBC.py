@@ -2,6 +2,8 @@ from __future__ import annotations
 import time
 import json
 import sqlite3
+import hashlib
+import random
 from bottle import get, run, post, request
 
 class globals:
@@ -61,31 +63,56 @@ class user:
         db.commit()
         db.close()
 
+@get('/Register')
+def register() -> None:             #Este método registra una cartera en la base de datos con el id pasado
+    datajson = request.json
 
-def register(id, passwd) -> None:   #Este método registra un usuario en la base de datos con la id pasada
-    return                          #y la contraseña (sin cifrar), por lo que antes hay que hashearla
+    username = datajson['username']
+    wallet_id = hashlib.sha256(username.encode('utf-8')).hexdigest()    #id de la cartera asociada al usuario
+    random_int = random.randint(0, 10000000)
+    wallet_key = hashlib.sha256(str(random_int).encode('utf-8')).hexdigest()
+
+    db = sqlite3.connect('ucacoin.db')
+    cur = db.cursor()
+
+    cursor = cur.execute("SELECT * FROM Wallets WHERE Id = '{}'".format(wallet_id))
+    result = cursor.fetchall()
+
+    for row in result:
+        db.close()
+        return {"Code": 403, "description": "That user already has an associated wallet"}
+
+    db.execute("INSERT INTO wallets VALUES('{}', '{}', 0.0)".format(wallet_id, wallet_key))
+    db.commit()
+    db.close()
+
+    return {"Code": 201, "private_key": wallet_key}
 
 @post('/Transfer')
 def transfer():     #solicitar una transacción
     datajson = request.json
 
-    origin = datajson['origin']
+    #el id de la cartera es el sha256 del usuario pasado
+    origin = hashlib.sha256(datajson['origin'].encode('utf-8')).hexdigest()
     key = datajson['key']
-    dest = datajson['dest']
+    #el id de la cartera es el sha256 del usuario pasado
+    dest = hashlib.sha256(datajson['dest'].encode('utf-8')).hexdigest()
     quant = datajson['quant']
     date = int(time.time())
 
     #COMPROBAR QUE LA TRANSACCIÓN ES VALIDA
     if(user.check_user(origin, key) == False):
-        raise Exception('CLAVE')
+        return {"Code": 401, "description": "Authentication error"}    #UNAUTHORIZED
     if(user.check_quant(origin, quant) == False):
-        raise Exception('CANTIDAD')
+        return {"Code": 403, "description": "Insufficient balance"}    #FORBIDDEN
 
     #A partir de aquí la transacción está validada, actualicemos los usuarios
     user.act_quant(origin, dest, quant)
 
     trans = transaction(origin, dest, quant, date)    #Creamos el objeto transacción y lo guardamos en el pool
     globals.pool.append(trans)
+
+    return {"Code": 202, "description": "Valid transaction"}         #ACCEPTED
 
 @get('/getTrans')
 def transactions():
