@@ -2,4 +2,3 @@ sudo apt update
 sudo apt install python3-pip
 sudo pip install bottle
 sudo apt install sqlite3
-sudo apt install sqlitebrowser
