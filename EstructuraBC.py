@@ -114,6 +114,26 @@ def transfer():     #solicitar una transacción
 
     return {"Code": 202, "description": "Valid transaction"}         #ACCEPTED
 
+@get('/Balance')
+def balance():
+    data = request.json
+
+    username = hashlib.sha256(data['username'].encode('utf-8')).hexdigest()
+    key = data['private_key']
+
+    if(user.check_user(username, key) == False):
+        return {"Code": 401, "description": "Authentication error"}    #UNAUTHORIZED
+    
+    db = sqlite3.connect('ucacoin.db')
+    cur = db.cursor()
+
+    cursor = cur.execute("SELECT Amount FROM Wallets WHERE Id = '{}'".format(username))
+    cursor = cursor.fetchall()
+    db.close()
+
+    for row in cursor:
+        return {"balance": row[0]}
+
 @get('/getTrans')
 def transactions():
     list_act = list()
