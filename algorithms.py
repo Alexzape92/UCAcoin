@@ -45,7 +45,7 @@ def createBlock() -> None:
         nextid = datajson['nextid']
         lasthash = datajson["lasthash"]
         pool = datajson["transactions"]
-        diff = 500000
+        diff = 200000
 
         nonce = requests.get(url='http://localhost:8000/getNonce/{}'.format(diff)).text
         currentBlock = block(nextid, len(pool), pool, lasthash, diff, int(nonce), int(time.time()))
