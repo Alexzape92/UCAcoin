@@ -105,6 +105,8 @@ def transfer():     #solicitar una transacción
         return {"Code": 401, "description": "Authentication error"}    #UNAUTHORIZED
     if(user.check_quant(origin, quant) == False):
         return {"Code": 403, "description": "Insufficient balance"}    #FORBIDDEN
+    if(quant <= 0.0):
+        return {"Code": 403, "description": "Invalid balance"}         #FORBIDDEN
 
     #A partir de aquí la transacción está validada, actualicemos los usuarios
     user.act_quant(origin, dest, quant)
@@ -132,7 +134,10 @@ def balance():
     db.close()
 
     for row in cursor:
-        return {"balance": row[0]}
+        return {"Code": 200, "balance": row[0]}
+
+    #En caso de que no exista ese usuario:
+    return {"Code": 404, "description": "Specified user doesn't exist"}
 
 @get('/getTrans')
 def transactions():
