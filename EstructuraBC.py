@@ -41,6 +41,19 @@ class user:
             db.close()
             return user(row[0], row[1], row[2])
     
+    def exists(name):
+        db = sqlite3.connect('ucacoin.db')
+        cur = db.cursor()
+
+        cur = cur.execute("SELECT * FROM Wallets WHERE Id = '{}'".format(name))
+        result = cur.fetchall()
+        db.close()
+
+        for row in result:
+            return True
+        
+        return False
+    
     #Comprueba que el usuario tenga la contraseña especificada (Habrá que hashearla en futuras versiones)
     def check_user(id, key) -> bool:
         us = user.get_obj_us(id)     
@@ -68,6 +81,8 @@ def register() -> None:             #Este método registra una cartera en la bas
     datajson = request.json
 
     username = datajson['username']
+    if username == "":
+        return {"Code": "403", "description": "The username can't be empty"}
     wallet_id = hashlib.sha256(username.encode('utf-8')).hexdigest()    #id de la cartera asociada al usuario
     random_int = random.randint(0, 10000000)
     wallet_key = hashlib.sha256(str(random_int).encode('utf-8')).hexdigest()
@@ -101,13 +116,15 @@ def transfer():     #solicitar una transacción
     date = int(time.time())
 
     #COMPROBAR QUE LA TRANSACCIÓN ES VALIDA
+    if(user.exists(dest) == False):
+        return {"Code": 403, "description": "Destination user doesn't exist"}
     if(user.check_user(origin, key) == False):
         return {"Code": 401, "description": "Authentication error"}    #UNAUTHORIZED
-    if(user.check_quant(origin, quant) == False):
-        return {"Code": 403, "description": "Insufficient balance"}    #FORBIDDEN
     if(quant <= 0.0):
         return {"Code": 403, "description": "Invalid balance"}         #FORBIDDEN
-
+    if(user.check_quant(origin, quant) == False):
+        return {"Code": 403, "description": "Insufficient balance"}    #FORBIDDEN
+    
     #A partir de aquí la transacción está validada, actualicemos los usuarios
     user.act_quant(origin, dest, quant)
 
